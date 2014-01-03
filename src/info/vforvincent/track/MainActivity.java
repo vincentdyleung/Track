@@ -34,8 +34,8 @@ public class MainActivity extends Activity implements SensorEventListener, OnCli
 	private double offset;
 	private double variance;
 	
-	private static final double DAMP = 0.95;
-	private static final double THRESHOLD = 0d;
+	private static final double DAMP = 0.95; //for exponential smoothing
+	private static final double THRESHOLD = 0.3d; //noise or white noise filter.
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
