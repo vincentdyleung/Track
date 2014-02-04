@@ -5,6 +5,8 @@ import info.vforvincent.track.MainActivity;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.util.Date;
 import java.util.Locale;
 
 import Jama.Matrix;
@@ -26,7 +28,10 @@ public class KalmanFilter {
 	
 	public KalmanFilter(double variance_, Matrix state_, Matrix extraction_) {
 		if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-			File output = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "output.csv");
+			Date time = new Date();
+			DateFormat format = DateFormat.getDateTimeInstance();
+			String fileName = "output_" + format.format(time) + ".csv";
+			File output = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileName);
 			try {
 				writer = new FileWriter(output);
 			} catch (IOException e) {
