@@ -54,9 +54,7 @@ public class MainActivity extends Activity implements SensorEventListener, OnCli
         mStopButton = (Button) findViewById(R.id.stop_button);
         mStartButton.setOnClickListener(this);
         mStopButton.setOnClickListener(this);
-        mKalmanFilter = new KalmanFilter(variance, 
-        								new Matrix(new double[][] {{0d}, {0d}, {0d}}), 
-        								new Matrix(new double[][] {{0d, 0d, 1d}}));
+        
     }
 
     @Override
@@ -98,12 +96,12 @@ public class MainActivity extends Activity implements SensorEventListener, OnCli
 		double adjustedValue = event.values[1] - offset;
 		mLastValue = adjustedValue;
 		mPreviousUpdates.add(adjustedValue);
+		double interval = ((double) event.timestamp - mLastUpdate) / 1000000000;
 		mLastUpdate = event.timestamp;
 		// do nothing if it is the first update or don't have enough to calculate variance
 		if (mLastUpdate == 0 || mPreviousUpdates.size() < WINDOW_SIZE) {
 			return;
 		}
-		double interval = ((double) event.timestamp - mLastUpdate) / 1000000000;
 		double value = (1 - DAMP) * adjustedValue + DAMP * mLastValue;
 		Variance movingVariance = new Variance();
 		Double[] values = mPreviousUpdates.toArray(new Double[0]);
@@ -119,15 +117,17 @@ public class MainActivity extends Activity implements SensorEventListener, OnCli
 	public void onClick(View element) {
 		if (element.getId() == R.id.start_button) {
 			mText.append("Tracking...\n");
+			mKalmanFilter = new KalmanFilter(variance, 
+					new Matrix(new double[][] {{0d}, {0d}, {0d}}), 
+					new Matrix(new double[][] {{0d, 0d, 1d}}));
 			mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
 		}
 		if (element.getId() == R.id.stop_button) {
 			mSensorManager.unregisterListener(this, mAccelerometer);
 			Matrix state = mKalmanFilter.getState();
 			mText.append("Result: " + Arrays.deepToString(state.getArray()) + "\n");
-			mKalmanFilter.reset();
 			mLastUpdate = 0;
-			mKalmanFilter.closeWriter();
+			mPreviousUpdates.clear();
 		}
 	}
 
@@ -136,7 +136,6 @@ public class MainActivity extends Activity implements SensorEventListener, OnCli
 		// TODO Auto-generated method stub
 		offset = results[0];
 		variance = results[1];
-		mKalmanFilter.setVariance(variance);
 		mText.setText("Calibration result:\n" + "Offset: " + Double.toString(offset) + "\nVariance: " + Double.toString(variance) + "\n");
 	}
 

@@ -23,8 +23,6 @@ public class KalmanFilter {
 	private Matrix P;
 	private Matrix R;
 	private final Matrix I;
-	private Matrix initialState;
-	private Matrix initialP;
 	
 	public KalmanFilter(double variance_, Matrix state_, Matrix extraction_) {
 		if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
@@ -40,7 +38,7 @@ public class KalmanFilter {
 			}
 		}
 		q = variance_;
-		initialState = state_;
+		x = state_;
 		H = extraction_;
 		double[][] transitionArray_ = {{1d, 0d, 0d}, {0d, 1d, 0d}, {0d, 0d, 1d}};
 		F = new Matrix(transitionArray_);
@@ -50,11 +48,10 @@ public class KalmanFilter {
 		Log.d(MainActivity.TAG, Integer.toString(I.getColumnDimension()));
 		
 		double[][] stateUncertaintyArray_ = {{0d, 0d, 0d}, {0d, 0d, 0d}, {0d, 0d, q}};
-		initialP = new Matrix(stateUncertaintyArray_);
+		P = new Matrix(stateUncertaintyArray_);
 		
 		R = new Matrix(new double[][] {{q}});
 		
-		reset();
 	}
 	
 	public void update(Matrix measurement_, double interval_) {
@@ -94,13 +91,8 @@ public class KalmanFilter {
 		q = variance;
 		R.set(0, 0, q);
 		P.set(2, 2, q);
-		initialP = P.copy();
 	}
 	
-	public void reset() {
-		x = initialState.copy();
-		P = initialP.copy();
-	}
 	
 	public void closeWriter() {
 		try {
