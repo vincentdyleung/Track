@@ -6,6 +6,8 @@ import info.vforvincent.track.ins.KalmanFilter;
 
 import java.util.Arrays;
 
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
+
 import Jama.Matrix;
 import android.app.Activity;
 import android.content.Context;
@@ -21,6 +23,8 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.google.common.collect.EvictingQueue;
+
 public class MainActivity extends Activity implements SensorEventListener, OnClickListener, CalibratorListener{
 	public static final String TAG = "Track";
 	private SensorManager mSensorManager;
@@ -33,14 +37,16 @@ public class MainActivity extends Activity implements SensorEventListener, OnCli
 	private double mLastValue = 0;
 	private double offset;
 	private double variance;
-	
+	private EvictingQueue<Double> mPreviousUpdates;
 	private static final double DAMP = 0.95;
-	private static final double THRESHOLD = 0d;
+	private static final double THRESHOLD = 0.003d;
+	private static final int WINDOW_SIZE = 20;
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mPreviousUpdates = EvictingQueue.create(WINDOW_SIZE);
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
         mText = (TextView) findViewById(R.id.text);
@@ -90,17 +96,23 @@ public class MainActivity extends Activity implements SensorEventListener, OnCli
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		double adjustedValue = event.values[1] - offset;
-		if (mLastUpdate == 0) {
-			mLastUpdate = event.timestamp;
-			mLastValue = adjustedValue;
+		mLastValue = adjustedValue;
+		mPreviousUpdates.add(adjustedValue);
+		mLastUpdate = event.timestamp;
+		// do nothing if it is the first update or don't have enough to calculate variance
+		if (mLastUpdate == 0 || mPreviousUpdates.size() < WINDOW_SIZE) {
 			return;
 		}
 		double interval = ((double) event.timestamp - mLastUpdate) / 1000000000;
 		double value = (1 - DAMP) * adjustedValue + DAMP * mLastValue;
-		Matrix measurement = new Matrix(new double[][]{{ Math.abs(value) < THRESHOLD ? 0d : value}});
+		Variance movingVariance = new Variance();
+		Double[] values = mPreviousUpdates.toArray(new Double[0]);
+		double[] doubleValues = new double[values.length];
+		for (int i = 0; i < values.length; i++) {
+			doubleValues[i] = values[i];
+		}
+		Matrix measurement = new Matrix(new double[][]{{ movingVariance.evaluate(doubleValues) < THRESHOLD ? 0d : value}});
 		mKalmanFilter.update(measurement, interval);
-		mLastUpdate = event.timestamp;
-		mLastValue = value;
 	}
 
 	@Override
