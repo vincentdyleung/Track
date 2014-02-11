@@ -8,5 +8,6 @@
     <string name="stop_label">Stop</string>
     <string name="action_calibrate">Calibrate</string>
     <string name="calibrate_title">Calibrate accelerometer</string>
+    <string name="distance">Distance: </string>
 
 </resources>

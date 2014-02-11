@@ -54,7 +54,7 @@ public class KalmanFilter {
 		
 	}
 	
-	public void update(Matrix measurement_, double interval_) {
+	public void update(Matrix measurement_, double interval_, double reading, double movingVariance, double raw) {
 		Matrix y = measurement_.minus(H.times(x));
 		Matrix S = H.times(P).times(H.transpose()).plus(R);
 		double valS = S.get(0, 0);
@@ -74,7 +74,7 @@ public class KalmanFilter {
 		Matrix Q = new Matrix(qArray);
 		x = F.times(x).copy();
 		P = F.times(P).times(F.transpose()).plus(Q).copy();
-		String line = String.format(Locale.US, "%f,%f,%f,%f\n", x.get(0, 0), x.get(1, 0), x.get(2, 0), measurement_.get(0, 0));
+		String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f\n", x.get(0, 0), x.get(1, 0), x.get(2, 0), measurement_.get(0, 0), reading, movingVariance, raw);
 		try {
 			writer.append(line);
 		} catch (IOException e) {
