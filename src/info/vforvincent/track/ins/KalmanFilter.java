@@ -74,7 +74,7 @@ public class KalmanFilter {
 		Matrix Q = new Matrix(qArray);
 		x = F.times(x).copy();
 		P = F.times(P).times(F.transpose()).plus(Q).copy();
-		String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f\n", x.get(0, 0), x.get(1, 0), x.get(2, 0), measurement_.get(0, 0), reading, movingVariance, raw);
+		String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f,%f\n", x.get(0, 0), x.get(1, 0), x.get(2, 0), measurement_.get(0, 0), reading, movingVariance, raw, interval_);
 		try {
 			writer.append(line);
 		} catch (IOException e) {

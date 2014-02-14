@@ -6,6 +6,8 @@
     <string name="hello_world">Hello world!</string>
     <string name="start_label">Start</string>
     <string name="stop_label">Stop</string>
+    <string name="capture_label">Capture</string>
+    <string name="capture_stop_label">Stop capture</string>
     <string name="action_calibrate">Calibrate</string>
     <string name="calibrate_title">Calibrate accelerometer</string>
     <string name="distance">Distance: </string>

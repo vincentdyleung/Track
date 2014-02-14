@@ -53,8 +53,24 @@
         android:id="@+id/parameters"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/start_button"
-        android:layout_alignLeft="@+id/start_button"
+        android:layout_below="@+id/capture_button"
+        android:layout_alignLeft="@+id/capture_button"
         android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <Button
+        android:id="@+id/capture_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/start_button"
+        android:text="@string/capture_label" />
+
+    <Button
+        android:id="@+id/capture_stop_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/capture_button"
+        android:layout_alignBottom="@+id/capture_button"
+        android:layout_toRightOf="@+id/capture_button"
+        android:text="@string/capture_stop_label" />
 
 </RelativeLayout>
