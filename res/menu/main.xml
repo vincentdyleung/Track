@@ -8,5 +8,8 @@
     <item
         android:id="@+id/actions_calibrate"
         android:title="@string/action_calibrate"/>
+    <item
+        android:id="@+id/action_distance"
+        android:title="@string/action_distance"/>
 
 </menu>

@@ -9,7 +9,9 @@
     <string name="capture_label">Capture</string>
     <string name="capture_stop_label">Stop capture</string>
     <string name="action_calibrate">Calibrate</string>
+    <string name="action_distance">Distance</string>
     <string name="calibrate_title">Calibrate accelerometer</string>
     <string name="distance">Distance: </string>
+    <string name="pitch_label">Pitch</string>
 
 </resources>

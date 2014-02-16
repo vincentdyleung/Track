@@ -1,17 +1,12 @@
 package info.vforvincent.track.ins;
 
-import info.vforvincent.track.MainActivity;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.text.DateFormat;
-import java.util.Date;
 import java.util.Locale;
 
 import Jama.Matrix;
 import android.os.Environment;
-import android.util.Log;
 
 public class KalmanFilter {
 
@@ -24,12 +19,16 @@ public class KalmanFilter {
 	private Matrix R;
 	private final Matrix I;
 	
-	public KalmanFilter(double variance_, Matrix state_, Matrix extraction_) {
+	public KalmanFilter(double variance_, Matrix state_, Matrix extraction_, String distanceString) {
 		if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-			Date time = new Date();
-			DateFormat format = DateFormat.getDateTimeInstance();
-			String fileName = "output_" + format.format(time) + ".csv";
-			File output = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileName);
+			String directoryPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Track/" + distanceString;
+			File directory = new File(directoryPath);
+			if (!directory.exists()) {
+				directory.mkdir();
+			}
+			int previousRunCount = directory.list().length;
+			String fileName = "run_" + Integer.toString(previousRunCount + 1) + ".csv";
+			File output = new File(directoryPath, fileName);
 			try {
 				writer = new FileWriter(output);
 			} catch (IOException e) {
@@ -44,8 +43,6 @@ public class KalmanFilter {
 		F = new Matrix(transitionArray_);
 		
 		I = Matrix.identity(F.getRowDimension(), F.getColumnDimension());
-		Log.d(MainActivity.TAG, Integer.toString(I.getRowDimension()));
-		Log.d(MainActivity.TAG, Integer.toString(I.getColumnDimension()));
 		
 		double[][] stateUncertaintyArray_ = {{0d, 0d, 0d}, {0d, 0d, 0d}, {0d, 0d, q}};
 		P = new Matrix(stateUncertaintyArray_);

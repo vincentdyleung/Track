@@ -73,4 +73,13 @@
         android:layout_toRightOf="@+id/capture_button"
         android:text="@string/capture_stop_label" />
 
+    <Button
+        android:id="@+id/pitch_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/capture_stop_button"
+        android:layout_alignBottom="@+id/capture_stop_button"
+        android:layout_toRightOf="@+id/capture_stop_button"
+        android:text="@string/pitch_label" />
+
 </RelativeLayout>
