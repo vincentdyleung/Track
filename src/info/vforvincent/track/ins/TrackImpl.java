@@ -27,7 +27,6 @@ public class TrackImpl implements Track {
 	private PointF lastPosition;
 	private PointF firstPosition;
 	private long lastTimestamp;
-	private long firstTimestamp;
 	private double scale;
 	private Sensor accelerometer;
 	private SensorManager sensorManager;
@@ -44,7 +43,7 @@ public class TrackImpl implements Track {
 	@Override
 	public void start() {
 		// TODO Auto-generated method stub
-		kalmanFilter = new KalmanFilter(0.0006, 
+		kalmanFilter = new KalmanFilter(parameters.getFloat(MainActivity.ACCELERATION_VARIANCE, 0), 
 				new Matrix(new double[][] {{0d}, {0d}, {0d}}), 
 				new Matrix(new double[][] {{0d, 0d, 1d}}));
 		locationUtil = new LocationUtil(context, siteName, dataFilePath);
@@ -59,8 +58,6 @@ public class TrackImpl implements Track {
 				if (positions != null && positions.length > 0) {
 					scale = ExtraLocationUtil.getBuildingScale(areaId);
 					lastPosition = positions[0];
-					Log.d(MainActivity.TAG, Double.toString(scale));
-					Log.d(MainActivity.TAG, Double.toString(lastPosition.x) + "," + Double.toString(lastPosition.y));
 					if (isFirstFix == false) {
 						firstPosition = positions[0];
 						Matrix state = new Matrix(new double[][] {{0d}, {0d}, {0d}});
@@ -150,12 +147,14 @@ public class TrackImpl implements Track {
 			Matrix kalmanFilterState = kalmanFilter.getState();
 			Matrix kalmanFilterCovariance = kalmanFilter.getCovariance();
 			double distance = getDistance(firstPosition, lastPosition);
-			double time = (lastTimestamp - firstTimestamp) / 1000;
-			Matrix landmark = new Matrix(new double[][] {{distance}, {time}, {0}});
+			double time = (System.currentTimeMillis() - lastTimestamp) / 1000;
+			Log.d(MainActivity.TAG, Double.toString(distance) + "," + Double.toString(time));
+			Matrix landmark = new Matrix(new double[][] {{distance}, {distance / time}, {0}});
 			ParticleFilter particleFilter = new ParticleFilter(kalmanFilterState, kalmanFilterCovariance, landmark);
 			particleFilter.start();
 			estimatedState = particleFilter.getEstimatedState();
 			Log.d(MainActivity.TAG, Arrays.deepToString(estimatedState.getArrayCopy()));
+			lastTimestamp = System.currentTimeMillis();
 		}
 		
 	}

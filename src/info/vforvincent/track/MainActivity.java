@@ -47,10 +47,10 @@ public class MainActivity extends FragmentActivity
 	private Button mCaptureButton;
 	private Button mCaptureStopButton;
 	private Button mPitchButton;
-	private static final String ACCELERATION_OFFSET = "acceleration_offset";
-	private static final String PITCH_OFFSET = "pitch_offset";
-	private static final String ACCELERATION_VARIANCE = "acceleration_variance";
-	private static final String PITCH_FACTOR = "pitch_factor";
+	public static final String ACCELERATION_OFFSET = "acceleration_offset";
+	public static final String PITCH_OFFSET = "pitch_offset";
+	public static final String ACCELERATION_VARIANCE = "acceleration_variance";
+	public static final String PITCH_FACTOR = "pitch_factor";
 	private SharedPreferences mParameters;
 	private CaptureSensorListener mCaptureListener;
 	private Track track;
@@ -137,6 +137,7 @@ public class MainActivity extends FragmentActivity
 //			mHistory.clear();
 //			mDelaySlots = WINDOW_SIZE;
 			track.stop();
+			FileUtil.getInstance().close();
 		}
 		if (element.getId() == R.id.capture_button) {
 			mCaptureListener = new CaptureSensorListener();

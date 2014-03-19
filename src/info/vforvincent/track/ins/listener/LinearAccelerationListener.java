@@ -1,6 +1,5 @@
 package info.vforvincent.track.ins.listener;
 
-import info.vforvincent.track.MainActivity;
 import info.vforvincent.track.ins.KalmanFilter;
 
 import java.util.LinkedList;
@@ -12,25 +11,24 @@ import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.util.Log;
 
 public class LinearAccelerationListener implements SensorEventListener {
 
 	private static final double UPPER_THRESHOLD = 1d;
 	private static final double LOWER_THRESHOLD = 0.05d;
 	private static final double FACTOR = 2;
-	private static final String PITCH_FACTOR = "pitch_offset";
+	private static final String PITCH_FACTOR = "pitch_factor";
 	private static final String ACCELERATION_OFFSET = "accleration_offset";
 	private SharedPreferences mParameters;
-	private long mLastUpdateTime;
-	private double mLastFirstPass;
-	private double mLastSecondPass;
+	private long mLastUpdateTime = 0;
+	private double mLastFirstPass = 0;
+	private double mLastSecondPass = 0;
 	private static double DAMP = 0.95;
 	private static int WINDOW_SIZE = 125;
 	private LinkedList<Double> mHistory;
 	private int mDelaySlots = WINDOW_SIZE;
 	private KalmanFilter mKalmanFilter;
-	private boolean mStarted;
+	private boolean mStarted = false;
 	
 	public LinearAccelerationListener(KalmanFilter kalmanFilter, SharedPreferences parameters) {
 		mHistory = new LinkedList<Double>();
@@ -75,7 +73,6 @@ public class LinearAccelerationListener implements SensorEventListener {
 			doubleValues[i] = mHistory.get(i);
 		}
 		double varianceResult = movingVariance.evaluate(doubleValues);
-		Log.d("Listener", "Variance: " + Double.toString(varianceResult));
 		double filterInput = mHistory.poll();
 		if (varianceResult < UPPER_THRESHOLD && varianceResult > LOWER_THRESHOLD) {
 			if (!mStarted) {
@@ -90,12 +87,11 @@ public class LinearAccelerationListener implements SensorEventListener {
 			}
 		}
 		Matrix measurement = new Matrix(new double[][]{{ filterInput*=FACTOR }});
-		Log.d("Listener", Double.toString(filterInput));
 		mKalmanFilter.update(measurement, interval, value, varianceResult, adjustedValue);
 		Matrix state = mKalmanFilter.getState();
 		double distance = state.get(0, 0);
 		String message = "Distance: " + Double.toString(distance);
-		Log.d(MainActivity.TAG, message);
+		//Log.d("Listener", message);
 	}
 
 }
