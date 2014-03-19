@@ -1,12 +1,13 @@
 package info.vforvincent.track.ins;
 
-import java.io.File;
+import info.vforvincent.track.MainActivity;
+
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Locale;
 
 import Jama.Matrix;
-import android.os.Environment;
+import android.util.Log;
 
 public class KalmanFilter {
 
@@ -19,23 +20,23 @@ public class KalmanFilter {
 	private Matrix R;
 	private final Matrix I;
 	
-	public KalmanFilter(double variance_, Matrix state_, Matrix extraction_, String distanceString) {
-		if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-			String directoryPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Track/" + distanceString;
-			File directory = new File(directoryPath);
-			if (!directory.exists()) {
-				directory.mkdir();
-			}
-			int previousRunCount = directory.list().length;
-			String fileName = "run_" + Integer.toString(previousRunCount + 1) + ".csv";
-			File output = new File(directoryPath, fileName);
-			try {
-				writer = new FileWriter(output);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+	public KalmanFilter(double variance_, Matrix state_, Matrix extraction_) {
+//		if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+//			String directoryPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Track/" + distanceString;
+//			File directory = new File(directoryPath);
+//			if (!directory.exists()) {
+//				directory.mkdir();
+//			}
+//			int previousRunCount = directory.list().length;
+//			String fileName = "run_" + Integer.toString(previousRunCount + 1) + ".csv";
+//			File output = new File(directoryPath, fileName);
+//			try {
+//				writer = new FileWriter(output);
+//			} catch (IOException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//		}
 		q = variance_;
 		x = state_;
 		H = extraction_;
@@ -72,16 +73,21 @@ public class KalmanFilter {
 		x = F.times(x).copy();
 		P = F.times(P).times(F.transpose()).plus(Q).copy();
 		String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f,%f\n", x.get(0, 0), x.get(1, 0), x.get(2, 0), measurement_.get(0, 0), reading, movingVariance, raw, interval_);
-		try {
-			writer.append(line);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} 
+//		try {
+//			writer.append(line);
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+		//Log.d(MainActivity.TAG, line);
 	}
 	
 	public Matrix getState() {
 		return x;
+	}
+	
+	public void setState(Matrix state) {
+		x = state;
 	}
 	
 	public void setVariance(double variance) {
@@ -90,6 +96,9 @@ public class KalmanFilter {
 		P.set(2, 2, q);
 	}
 	
+	public Matrix getCovariance() {
+		return P;
+	}
 	
 	public void closeWriter() {
 		try {

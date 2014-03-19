@@ -2,22 +2,18 @@ package info.vforvincent.track;
 
 import info.vforvincent.track.calibration.Calibrator;
 import info.vforvincent.track.calibration.CalibratorListener;
-import info.vforvincent.track.ins.KalmanFilter;
+import info.vforvincent.track.ins.TrackImpl;
 import info.vforvincent.track.ui.DistanceDialogFragment;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DateFormat;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.Locale;
 import java.util.Map;
 
-import org.apache.commons.math3.stat.descriptive.moment.Variance;
-
-import Jama.Matrix;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.hardware.Sensor;
@@ -38,49 +34,35 @@ import android.widget.TextView;
 import com.google.common.base.Joiner;
 
 public class MainActivity extends FragmentActivity 
-					implements SensorEventListener, OnClickListener, CalibratorListener,
+					implements OnClickListener, CalibratorListener,
 					SharedPreferences.OnSharedPreferenceChangeListener {
 	public static final String TAG = "Track";
 	private SensorManager mSensorManager;
 	private Sensor mAccelerometer;
 	private Sensor mRotation;
 	private TextView mText;
-	private TextView mDistanceText;
 	private TextView mParameterText;
 	private Button mStartButton;
 	private Button mStopButton;
 	private Button mCaptureButton;
 	private Button mCaptureStopButton;
 	private Button mPitchButton;
-	private KalmanFilter mKalmanFilter;
-	private long mLastUpdateTime = 0;
-	private boolean mStarted = false;
-	private double mLastFirstPass = 0;
-	private double mLastSecondPass = 0;
-	private int mDelaySlots = WINDOW_SIZE;
-	private LinkedList<Double> mHistory;
-	private static final double DAMP = 0.95;
-	private static final double UPPER_THRESHOLD = 1d;
-	private static final double LOWER_THRESHOLD = 0.05d;
-	private static final int WINDOW_SIZE = 125;
-	private static final double FACTOR = 2;
 	private static final String ACCELERATION_OFFSET = "acceleration_offset";
 	private static final String PITCH_OFFSET = "pitch_offset";
 	private static final String ACCELERATION_VARIANCE = "acceleration_variance";
 	private static final String PITCH_FACTOR = "pitch_factor";
 	private SharedPreferences mParameters;
 	private CaptureSensorListener mCaptureListener;
+	private Track track;
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mHistory = new LinkedList<Double>();
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
         mRotation = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         mText = (TextView) findViewById(R.id.text);
-        mDistanceText = (TextView) findViewById(R.id.distance);
         mStartButton = (Button) findViewById(R.id.start_button);
         mStopButton = (Button) findViewById(R.id.stop_button);
         mCaptureButton = (Button) findViewById(R.id.capture_button);
@@ -100,12 +82,6 @@ public class MainActivity extends FragmentActivity
         if (!directory.exists()) {
         	directory.mkdir();
         }
-    }
-
-    @Override
-    public void onPause() {
-    	super.onPause();
-    	mSensorManager.unregisterListener(this, mAccelerometer);
     }
 
     @Override
@@ -131,88 +107,36 @@ public class MainActivity extends FragmentActivity
     	}
     }
 
-
-	@Override
-	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-		// TODO Auto-generated method stub
-		
-	}
-
-
-	@Override
-	public void onSensorChanged(SensorEvent event) {
-		float factor = mParameters.getFloat(PITCH_FACTOR, 1);
-		double adjustedValue = (event.values[1] - mParameters.getFloat(ACCELERATION_OFFSET, 0)) * factor;
-		double value = 0;
-		// first update received
-		if (mLastUpdateTime == 0) {
-			mLastFirstPass = adjustedValue;
-			mLastSecondPass = adjustedValue;
-			value = adjustedValue;
-		} else {
-//			if (mStarted && event.timestamp - mFirstUpdateTime > 3000000000l) {
-//				mStopButton.performClick();
-//				return;
-//			}
-			double firstPass = DAMP * mLastFirstPass + (1 - DAMP) * adjustedValue;
-			double secondPass = DAMP * mLastSecondPass + (1 - DAMP) * firstPass;
-			mLastFirstPass = firstPass;
-			mLastSecondPass = secondPass;
-			value = secondPass;
-		}
-		double interval = ((double) event.timestamp - mLastUpdateTime) / 1000000000;
-		mLastUpdateTime = event.timestamp;
-		mHistory.add(value);
-		// wait until the window is full
-		if (mHistory.size() < WINDOW_SIZE) {
-			return;
-		}
-		Variance movingVariance = new Variance();
-		double[] doubleValues = new double[WINDOW_SIZE];
-		for (int i = 0; i < WINDOW_SIZE; i++) {
-			doubleValues[i] = mHistory.get(i);
-		}
-		double varianceResult = movingVariance.evaluate(doubleValues);
-		double filterInput = mHistory.poll();
-		if (varianceResult < UPPER_THRESHOLD && varianceResult > LOWER_THRESHOLD) {
-			if (!mStarted) {
-				mStarted = true;
-			}
-			mDelaySlots = 0;
-		} else {
-			if (mDelaySlots < WINDOW_SIZE) {
-				mDelaySlots++;
-			} else {
-				filterInput = 0;
-			}
-		}
-		Matrix measurement = new Matrix(new double[][]{{ filterInput*=FACTOR }});
-		mKalmanFilter.update(measurement, interval, value, varianceResult, adjustedValue);
-		Matrix state = mKalmanFilter.getState();
-		double distance = state.get(0, 0);
-		String message = "Distance: " + Double.toString(distance);
-		mDistanceText.setText(message);
-	}
-
 	@Override
 	public void onClick(View element) {
 		if (element.getId() == R.id.start_button) {
-			mText.append("Tracking...\n");
-			mKalmanFilter = new KalmanFilter(mParameters.getFloat(ACCELERATION_VARIANCE, 0), 
-					new Matrix(new double[][] {{0d}, {0d}, {0d}}), 
-					new Matrix(new double[][] {{0d, 0d, 1d}}),
-					Integer.toString(mParameters.getInt(DistanceDialogFragment.DISTANCE, 0)) + "m");
-			mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+//			mText.append("Tracking...\n");
+//			mKalmanFilter = new KalmanFilter(mParameters.getFloat(ACCELERATION_VARIANCE, 0), 
+//					new Matrix(new double[][] {{0d}, {0d}, {0d}}), 
+//					new Matrix(new double[][] {{0d, 0d, 1d}}),
+//					Integer.toString(mParameters.getInt(DistanceDialogFragment.DISTANCE, 0)) + "m");
+//			//mLinearAccelerationListener = new LinearAccelerationListener(mDistanceText, mKalmanFilter);
+//			mSensorManager.registerListener(mLinearAccelerationListener, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+			track = new TrackImpl().
+					setContext(this).
+					setSiteName("hkust").
+					setDataFilePath(Environment.getExternalStorageDirectory() + "/wherami").
+					setAccelerometer(mAccelerometer).
+					setSensorManager(mSensorManager).
+					setTimeInterval(500).
+					setParameters(mParameters);
+			track.start();
 		}
 		if (element.getId() == R.id.stop_button) {
-			mKalmanFilter.closeWriter();
-			mSensorManager.unregisterListener(this, mAccelerometer);
-			Matrix state = mKalmanFilter.getState();
-			mText.append("Result: " + Arrays.deepToString(state.getArray()) + "\n");
-			mLastUpdateTime = 0;
-			mStarted = false;
-			mHistory.clear();
-			mDelaySlots = WINDOW_SIZE;
+//			mKalmanFilter.closeWriter();
+//			mSensorManager.unregisterListener(mLinearAccelerationListener, mAccelerometer);
+//			Matrix state = mKalmanFilter.getState();
+//			mText.append("Result: " + Arrays.deepToString(state.getArray()) + "\n");
+//			mLastUpdateTime = 0;
+//			mStarted = false;
+//			mHistory.clear();
+//			mDelaySlots = WINDOW_SIZE;
+			track.stop();
 		}
 		if (element.getId() == R.id.capture_button) {
 			mCaptureListener = new CaptureSensorListener();
