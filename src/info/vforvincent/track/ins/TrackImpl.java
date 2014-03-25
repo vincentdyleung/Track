@@ -1,5 +1,6 @@
 package info.vforvincent.track.ins;
 
+import info.vforvincent.track.FileUtil;
 import info.vforvincent.track.MainActivity;
 import info.vforvincent.track.Track;
 import info.vforvincent.track.ins.listener.LinearAccelerationListener;
@@ -24,8 +25,8 @@ public class TrackImpl implements Track {
 	private String siteName;
 	private String dataFilePath;
 	private long timeInterval;  //in milliseconds
+	private PointF currentPosition;
 	private PointF lastPosition;
-	private PointF firstPosition;
 	private long lastTimestamp;
 	private double scale;
 	private Sensor accelerometer;
@@ -57,9 +58,10 @@ public class TrackImpl implements Track {
 				// TODO Auto-generated method stub
 				if (positions != null && positions.length > 0) {
 					scale = ExtraLocationUtil.getBuildingScale(areaId);
-					lastPosition = positions[0];
+					lastPosition = currentPosition;
+					currentPosition = positions[0];
 					if (isFirstFix == false) {
-						firstPosition = positions[0];
+						lastPosition = positions[0];
 						Matrix state = new Matrix(new double[][] {{0d}, {0d}, {0d}});
 						startKalmanFilter(state);
 						wifiTimer.schedule(pfTask, 0l, timeInterval);
@@ -146,14 +148,19 @@ public class TrackImpl implements Track {
 			//sensorManager.unregisterListener(linearAccelerationListener, accelerometer);
 			Matrix kalmanFilterState = kalmanFilter.getState();
 			Matrix kalmanFilterCovariance = kalmanFilter.getCovariance();
-			double distance = getDistance(firstPosition, lastPosition);
-			double time = (System.currentTimeMillis() - lastTimestamp) / 1000;
-			Log.d(MainActivity.TAG, Double.toString(distance) + "," + Double.toString(time));
-			Matrix landmark = new Matrix(new double[][] {{distance}, {distance / time}, {0}});
+			double distance = getDistance(currentPosition, lastPosition);
+			double time = ((double) System.currentTimeMillis() - lastTimestamp) / 1000;
+			Matrix landmark = new Matrix(new double[][] {{distance}, {distance / time}, {linearAccelerationListener.getLastAcceleration()}});
+			Log.d(MainActivity.TAG, "Landmark: " + Arrays.deepToString(landmark.getArray()));
+			Log.d(MainActivity.TAG, "Kalman: " + Arrays.deepToString(kalmanFilterState.getArray()));
 			ParticleFilter particleFilter = new ParticleFilter(kalmanFilterState, kalmanFilterCovariance, landmark);
 			particleFilter.start();
 			estimatedState = particleFilter.getEstimatedState();
-			Log.d(MainActivity.TAG, Arrays.deepToString(estimatedState.getArrayCopy()));
+			String line = String.format("%f,%f,%f", estimatedState.getArray()[0][0], estimatedState.getArray()[1][0], estimatedState.getArray()[2][0]);
+			FileUtil.getInstance().writeLine(line);
+			Log.d(MainActivity.TAG, "Estimate: " + Arrays.deepToString(estimatedState.getArrayCopy()));
+			Matrix newState = new Matrix(new double[][] {{0d}, {estimatedState.getArray()[1][0]}, {estimatedState.getArray()[2][0]}});
+			linearAccelerationListener.getKalmanFilter().setState(newState);
 			lastTimestamp = System.currentTimeMillis();
 		}
 		

@@ -29,6 +29,7 @@ public class LinearAccelerationListener implements SensorEventListener {
 	private int mDelaySlots = WINDOW_SIZE;
 	private KalmanFilter mKalmanFilter;
 	private boolean mStarted = false;
+	private double lastAcceleration;
 	
 	public LinearAccelerationListener(KalmanFilter kalmanFilter, SharedPreferences parameters) {
 		mHistory = new LinkedList<Double>();
@@ -47,6 +48,7 @@ public class LinearAccelerationListener implements SensorEventListener {
 		// TODO Auto-generated method stub
 		float factor = mParameters.getFloat(PITCH_FACTOR, 1);
 		double adjustedValue = (event.values[1] - mParameters.getFloat(ACCELERATION_OFFSET, 0)) * factor;
+		lastAcceleration = adjustedValue;
 		double value = 0;
 		// first update received
 		if (mLastUpdateTime == 0) {
@@ -88,10 +90,14 @@ public class LinearAccelerationListener implements SensorEventListener {
 		}
 		Matrix measurement = new Matrix(new double[][]{{ filterInput*=FACTOR }});
 		mKalmanFilter.update(measurement, interval, value, varianceResult, adjustedValue);
-		Matrix state = mKalmanFilter.getState();
-		double distance = state.get(0, 0);
-		String message = "Distance: " + Double.toString(distance);
-		//Log.d("Listener", message);
+	}
+	
+	public double getLastAcceleration() {
+		return lastAcceleration;
+	}
+	
+	public KalmanFilter getKalmanFilter() {
+		return mKalmanFilter;
 	}
 
 }

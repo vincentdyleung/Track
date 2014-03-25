@@ -110,32 +110,17 @@ public class MainActivity extends FragmentActivity
 	@Override
 	public void onClick(View element) {
 		if (element.getId() == R.id.start_button) {
-//			mText.append("Tracking...\n");
-//			mKalmanFilter = new KalmanFilter(mParameters.getFloat(ACCELERATION_VARIANCE, 0), 
-//					new Matrix(new double[][] {{0d}, {0d}, {0d}}), 
-//					new Matrix(new double[][] {{0d, 0d, 1d}}),
-//					Integer.toString(mParameters.getInt(DistanceDialogFragment.DISTANCE, 0)) + "m");
-//			//mLinearAccelerationListener = new LinearAccelerationListener(mDistanceText, mKalmanFilter);
-//			mSensorManager.registerListener(mLinearAccelerationListener, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
 			track = new TrackImpl().
 					setContext(this).
 					setSiteName("hkust").
 					setDataFilePath(Environment.getExternalStorageDirectory() + "/wherami").
 					setAccelerometer(mAccelerometer).
 					setSensorManager(mSensorManager).
-					setTimeInterval(500).
+					setTimeInterval(1000).
 					setParameters(mParameters);
 			track.start();
 		}
 		if (element.getId() == R.id.stop_button) {
-//			mKalmanFilter.closeWriter();
-//			mSensorManager.unregisterListener(mLinearAccelerationListener, mAccelerometer);
-//			Matrix state = mKalmanFilter.getState();
-//			mText.append("Result: " + Arrays.deepToString(state.getArray()) + "\n");
-//			mLastUpdateTime = 0;
-//			mStarted = false;
-//			mHistory.clear();
-//			mDelaySlots = WINDOW_SIZE;
 			track.stop();
 			FileUtil.getInstance().close();
 		}

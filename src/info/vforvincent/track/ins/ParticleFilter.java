@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Random;
 
 import Jama.Matrix;
+import android.util.Log;
 
 public class ParticleFilter {
 	
@@ -16,12 +17,14 @@ public class ParticleFilter {
 	
 	public ParticleFilter(Matrix state, Matrix covariance, Matrix landmark) {
 		particles = new LinkedList<Particle>();
+		double meanDistance = getDistance(state, landmark);
 		for (int i = 0; i < PARTICLE_COUNT; i++) {
 			Particle p = generateRandomParticle(state, covariance);
-			p.updateWeight(landmark);
+			p.updateWeight(landmark, meanDistance, getVarianceFromCovariance(covariance));
 			particles.add(p);
 		}
 		maxWeight = getMaxWeight(particles);
+		Log.d("PF", "Max weight: " + Double.toString(maxWeight));
 		rows = state.getRowDimension();
 		cols = state.getColumnDimension();
 	}
@@ -35,7 +38,8 @@ public class ParticleFilter {
 		for (Particle p : particles) {
 			sum.plusEquals(p.state);
 		}
-		return sum.times(1 / PARTICLE_COUNT);
+		Matrix estimate = sum.times((double) 1 / PARTICLE_COUNT);
+		return estimate; 
 	}
 	
 	private List<Particle> resample() {
@@ -50,6 +54,7 @@ public class ParticleFilter {
 				index = (index + 1) % PARTICLE_COUNT;
 			}
 			resampledParticles.add(particles.get(index));
+			//Log.d("PF", "Selected: " + Arrays.deepToString(particles.get(index).state.getArray()));
 		}
 		maxWeight = getMaxWeight(resampledParticles);
 		return resampledParticles;
@@ -95,10 +100,24 @@ public class ParticleFilter {
 			state = s;
 		}
 		
-		public void updateWeight(Matrix landmark) {
-			weight = 0.5;
+		public void updateWeight(Matrix landmark, double mean, double variance) {
+			double distance = getDistance(landmark, state);
+			double exponent = -0.5 * Math.pow(distance - mean, 2) / variance;
+			weight = Math.exp(exponent) / Math.sqrt(2 * Math.PI * variance);
 		}
 		
+	}
+	
+	private double getDistance(Matrix v1, Matrix v2) {
+		double sum = 0d;
+		for (int i = 0; i < v1.getRowDimension(); i++) {
+			sum += Math.pow(v1.get(i, 0) - v2.get(i, 0), 2);
+		}
+		return Math.sqrt(sum);
+	}
+	
+	private double getVarianceFromCovariance(Matrix covariance) {
+		return covariance.get(0, 0);
 	}
 
 }

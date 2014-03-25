@@ -2,7 +2,6 @@ package info.vforvincent.track.ins;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Locale;
 
 import Jama.Matrix;
 
@@ -53,7 +52,7 @@ public class KalmanFilter {
 		Matrix Q = new Matrix(qArray);
 		x = F.times(x).copy();
 		P = F.times(P).times(F.transpose()).plus(Q).copy();
-		String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f,%f", x.get(0, 0), x.get(1, 0), x.get(2, 0), measurement_.get(0, 0), reading, movingVariance, raw, interval_);
+		//String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f,%f", x.get(0, 0), x.get(1, 0), x.get(2, 0), measurement_.get(0, 0), reading, movingVariance, raw, interval_);
 		//FileUtil.getInstance().writeLine(line);
 	}
 	
