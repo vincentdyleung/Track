@@ -52,7 +52,7 @@ public class KalmanFilter {
 		Matrix Q = new Matrix(qArray);
 		x = F.times(x).copy();
 		P = F.times(P).times(F.transpose()).plus(Q).copy();
-		//String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f,%f", x.get(0, 0), x.get(1, 0), x.get(2, 0), measurement_.get(0, 0), reading, movingVariance, raw, interval_);
+		//String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f,%f,%f", P.get(0, 0), P.get(0, 1), P.get(0, 2), P.get(1, 0), P.get(1, 1), P.get(1, 2), P.get(2, 0), P.get(2, 1), P.get(2, 2));
 		//FileUtil.getInstance().writeLine(line);
 	}
 	

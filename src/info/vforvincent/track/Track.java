@@ -7,7 +7,6 @@ import android.hardware.SensorManager;
 
 public interface Track {
 	public void start();
-	public Track setTimeInterval(long timeInterval);
 	public Track setAccelerometer(Sensor accelerometer);
 	public Track setSensorManager(SensorManager sensorManager);
 	public Track setContext(Context context);

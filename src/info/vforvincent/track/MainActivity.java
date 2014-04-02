@@ -110,13 +110,13 @@ public class MainActivity extends FragmentActivity
 	@Override
 	public void onClick(View element) {
 		if (element.getId() == R.id.start_button) {
+			FileUtil.getInstance().open();
 			track = new TrackImpl().
 					setContext(this).
 					setSiteName("hkust").
 					setDataFilePath(Environment.getExternalStorageDirectory() + "/wherami").
 					setAccelerometer(mAccelerometer).
 					setSensorManager(mSensorManager).
-					setTimeInterval(1000).
 					setParameters(mParameters);
 			track.start();
 		}

@@ -11,6 +11,7 @@ import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
+import android.util.Log;
 
 public class LinearAccelerationListener implements SensorEventListener {
 

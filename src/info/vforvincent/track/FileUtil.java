@@ -11,22 +11,6 @@ public class FileUtil {
 	private FileWriter writer;
 	
 	private FileUtil() {
-		if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-			String directoryPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Track/";
-			File directory = new File(directoryPath);
-			if (!directory.exists()) {
-				directory.mkdir();
-			}
-			int previousRunCount = directory.list().length;
-			String fileName = "run_" + Integer.toString(previousRunCount + 1) + ".csv";
-			File output = new File(directoryPath, fileName);
-			try {
-				writer = new FileWriter(output);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
 	}
 	
 	public static FileUtil getInstance() {
@@ -51,6 +35,25 @@ public class FileUtil {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+	}
+	
+	public void open() {
+		if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+			String directoryPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Track/";
+			File directory = new File(directoryPath);
+			if (!directory.exists()) {
+				directory.mkdir();
+			}
+			int previousRunCount = directory.list().length;
+			String fileName = "run_" + Integer.toString(previousRunCount + 1) + ".csv";
+			File output = new File(directoryPath, fileName);
+			try {
+				writer = new FileWriter(output);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	
