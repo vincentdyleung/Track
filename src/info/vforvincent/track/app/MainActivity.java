@@ -1,19 +1,20 @@
-package info.vforvincent.track;
+package info.vforvincent.track.app;
 
-import info.vforvincent.track.calibration.Calibrator;
-import info.vforvincent.track.calibration.CalibratorListener;
-import info.vforvincent.track.ins.TrackImpl;
-import info.vforvincent.track.ui.DistanceDialogFragment;
+import info.vforivncent.track.listener.OnTrackStateUpdateListener;
+import info.vforvincent.track.R;
+import info.vforvincent.track.Track;
+import info.vforvincent.track.app.ui.DistanceDialogFragment;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DateFormat;
+import java.util.Arrays;
 import java.util.Date;
-import java.util.LinkedList;
 import java.util.Locale;
 import java.util.Map;
 
+import Jama.Matrix;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.hardware.Sensor;
@@ -34,23 +35,19 @@ import android.widget.TextView;
 import com.google.common.base.Joiner;
 
 public class MainActivity extends FragmentActivity 
-					implements OnClickListener, CalibratorListener,
-					SharedPreferences.OnSharedPreferenceChangeListener {
+					implements OnClickListener,
+					SharedPreferences.OnSharedPreferenceChangeListener,
+					OnTrackStateUpdateListener {
 	public static final String TAG = "Track";
 	private SensorManager mSensorManager;
 	private Sensor mAccelerometer;
-	private Sensor mRotation;
 	private TextView mText;
 	private TextView mParameterText;
 	private Button mStartButton;
 	private Button mStopButton;
 	private Button mCaptureButton;
 	private Button mCaptureStopButton;
-	private Button mPitchButton;
-	public static final String ACCELERATION_OFFSET = "acceleration_offset";
-	public static final String PITCH_OFFSET = "pitch_offset";
-	public static final String ACCELERATION_VARIANCE = "acceleration_variance";
-	public static final String PITCH_FACTOR = "pitch_factor";
+
 	private SharedPreferences mParameters;
 	private CaptureSensorListener mCaptureListener;
 	private Track track;
@@ -61,18 +58,15 @@ public class MainActivity extends FragmentActivity
         setContentView(R.layout.activity_main);
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-        mRotation = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         mText = (TextView) findViewById(R.id.text);
         mStartButton = (Button) findViewById(R.id.start_button);
         mStopButton = (Button) findViewById(R.id.stop_button);
         mCaptureButton = (Button) findViewById(R.id.capture_button);
         mCaptureStopButton = (Button) findViewById(R.id.capture_stop_button);
-        mPitchButton = (Button) findViewById(R.id.pitch_button);
         mCaptureButton.setOnClickListener(this);
         mCaptureStopButton.setOnClickListener(this);
         mStartButton.setOnClickListener(this);
         mStopButton.setOnClickListener(this);
-        mPitchButton.setOnClickListener(this);
         mParameters = getPreferences(Context.MODE_PRIVATE);
         mParameters.registerOnSharedPreferenceChangeListener(this);
         mParameterText = (TextView) findViewById(R.id.parameters);
@@ -95,9 +89,6 @@ public class MainActivity extends FragmentActivity
     public boolean onOptionsItemSelected(MenuItem item) {
     	switch(item.getItemId()) {
     		case R.id.actions_calibrate:
-    			Calibrator calibrator = new Calibrator(this);
-    			calibrator.start();
-    			mText.setText("Calibrating...");
     			return true;
     		case R.id.action_distance:
     			DistanceDialogFragment distanceDialog = new DistanceDialogFragment();
@@ -111,13 +102,7 @@ public class MainActivity extends FragmentActivity
 	public void onClick(View element) {
 		if (element.getId() == R.id.start_button) {
 			FileUtil.getInstance().open();
-			track = new TrackImpl().
-					setContext(this).
-					setSiteName("hkust").
-					setDataFilePath(Environment.getExternalStorageDirectory() + "/wherami").
-					setAccelerometer(mAccelerometer).
-					setSensorManager(mSensorManager).
-					setParameters(mParameters);
+			track = new Track("hkust", Environment.getExternalStorageDirectory() + "/wherami", this, this);
 			track.start();
 		}
 		if (element.getId() == R.id.stop_button) {
@@ -134,52 +119,7 @@ public class MainActivity extends FragmentActivity
 			mText.append("Capture finished");
 			mCaptureListener.closeWriter();
 		}
-		if (element.getId() == R.id.pitch_button) {
-			mSensorManager.registerListener(new SensorEventListener() {
 
-				@Override
-				public void onAccuracyChanged(Sensor arg0, int arg1) {
-					// TODO Auto-generated method stub
-					
-				}
-
-				@Override
-				public void onSensorChanged(SensorEvent event) {
-					// TODO Auto-generated method stub
-					float[] values = new float[3];
-					float[] rotationMatrix = new float[9];
-					SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
-					SensorManager.getOrientation(rotationMatrix, values);
-					mParameters.edit().putFloat(PITCH_FACTOR, (float) Math.cos(values[1])).commit();
-					mSensorManager.unregisterListener(this, mRotation);
-				}
-				
-			}, mRotation, SensorManager.SENSOR_DELAY_NORMAL);
-		}
-	}
-
-	@Override
-	public void onFinish(double[] results) {
-		// TODO Auto-generated method stub
-		mParameters.edit().
-		putFloat(ACCELERATION_OFFSET, (float) results[0]).
-		putFloat(ACCELERATION_VARIANCE, (float) results[1]).
-		putFloat(PITCH_OFFSET, (float) results[2]).
-		commit();
-		mText.append("Calibration done\n");
-	}
-
-	@Override
-	public SensorManager getSensorManager() {
-		return mSensorManager;
-	}
-
-	@Override
-	public LinkedList<Sensor> getSensors() {
-		LinkedList<Sensor> sensors = new LinkedList<Sensor>();
-		sensors.add(mAccelerometer);
-		sensors.add(mRotation);
-		return sensors;
 	}
 	
 	private class CaptureSensorListener implements SensorEventListener {
@@ -251,5 +191,11 @@ public class MainActivity extends FragmentActivity
 		Map<String, ?> allParameters = sharedPreferences.getAll();
 		String string = Joiner.on("\n").withKeyValueSeparator("=").join(allParameters);
 		mParameterText.setText(string);
+	}
+
+	@Override
+	public void onTrackStateUpdate(Matrix state) {
+		// TODO Auto-generated method stub
+		Log.d(TAG, Arrays.deepToString(state.getArray()));
 	}
 }

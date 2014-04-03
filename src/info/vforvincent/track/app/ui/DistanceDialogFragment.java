@@ -1,4 +1,4 @@
-package info.vforvincent.track.ui;
+package info.vforvincent.track.app.ui;
 
 import info.vforvincent.track.R;
 import android.app.AlertDialog;

@@ -1,4 +1,4 @@
-package info.vforvincent.track.ins;
+package info.vforvincent.track;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;

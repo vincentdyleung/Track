@@ -1,4 +1,4 @@
-package info.vforvincent.track;
+package info.vforvincent.track.app;
 
 import java.io.File;
 import java.io.FileWriter;
