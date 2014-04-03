@@ -1,9 +1,9 @@
 package info.vforvincent.track.app;
 
-import info.vforivncent.track.listener.OnTrackStateUpdateListener;
 import info.vforvincent.track.R;
 import info.vforvincent.track.Track;
 import info.vforvincent.track.app.ui.DistanceDialogFragment;
+import info.vforvincent.track.listener.OnTrackStateUpdateListener;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -103,6 +103,7 @@ public class MainActivity extends FragmentActivity
 		if (element.getId() == R.id.start_button) {
 			FileUtil.getInstance().open();
 			track = new Track("hkust", Environment.getExternalStorageDirectory() + "/wherami", this, this);
+			track.setOnTrackStateUpdateListener(this);
 			track.start();
 		}
 		if (element.getId() == R.id.stop_button) {
@@ -194,7 +195,7 @@ public class MainActivity extends FragmentActivity
 	}
 
 	@Override
-	public void onTrackStateUpdate(Matrix state) {
+	public void onTrackStateUpdate(Matrix state, int rssi) {
 		// TODO Auto-generated method stub
 		Log.d(TAG, Arrays.deepToString(state.getArray()));
 	}

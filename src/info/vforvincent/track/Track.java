@@ -1,11 +1,11 @@
 package info.vforvincent.track;
 
-import info.vforivncent.track.listener.OnTrackStateUpdateListener;
 import info.vforvincent.track.app.MainActivity;
 import info.vforvincent.track.calibration.Calibrator;
 import info.vforvincent.track.ins.KalmanFilter;
 import info.vforvincent.track.ins.ParticleFilter;
 import info.vforvincent.track.ins.listener.LinearAccelerationListener;
+import info.vforvincent.track.listener.OnTrackStateUpdateListener;
 
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
@@ -22,7 +22,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
+import android.net.wifi.WifiManager;
 import android.util.Log;
+import android.widget.Toast;
 
 public class Track {
 	private LocationUtil locationUtil;
@@ -50,6 +52,7 @@ public class Track {
 	public static final String PITCH_FACTOR = "pitch_factor";
 	private static final int[] SENSORS = {Sensor.TYPE_LINEAR_ACCELERATION, Sensor.TYPE_ROTATION_VECTOR};
 	private final Calibrator calibrator;
+	private WifiManager wifiManager;
 	
 	public Track(String siteName, String dataFilePath, Activity activity, Context context) {
 		this.siteName = siteName;
@@ -60,6 +63,8 @@ public class Track {
 		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
 		parameters = this.activity.getPreferences(Context.MODE_PRIVATE);
 		calibrator = new Calibrator(SENSORS, context);
+		wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+		locationUtil = new LocationUtil(this.context, this.siteName, this.dataFilePath);
 	}
 
 	public void start() {
@@ -89,7 +94,6 @@ public class Track {
 				new Matrix(new double[][] {{0d}, {0d}, {0d}}), 
 				new Matrix(new double[][] {{0d, 0d, 1d}}));
 		particleFilter = ParticleFilter.getInstance();
-		locationUtil = new LocationUtil(context, siteName, dataFilePath);
 		locationUtil.setOnGetLocationResultListener(new OnGetLocationResultListener() {
 
 			@Override
@@ -107,6 +111,9 @@ public class Track {
 						return;
 					}
 					runParticleFilter();
+				} else {
+					Toast.makeText(context, "Site not supported", Toast.LENGTH_SHORT).show();
+					locationUtil.stopLocation();
 				}
 			}
 			
@@ -130,7 +137,7 @@ public class Track {
 		Matrix newState = new Matrix(new double[][] {{0d}, {estimatedState.getArray()[1][0]}, {estimatedState.getArray()[2][0]}});
 		linearAccelerationListener.getKalmanFilter().setState(newState);
 		lastTimestamp = System.currentTimeMillis();
-		listener.onTrackStateUpdate(estimatedState);
+		listener.onTrackStateUpdate(estimatedState, wifiManager.getConnectionInfo().getRssi());
 	}
 	
 	public void stop() {

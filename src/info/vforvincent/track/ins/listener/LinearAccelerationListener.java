@@ -1,5 +1,6 @@
 package info.vforvincent.track.ins.listener;
 
+import info.vforvincent.track.Track;
 import info.vforvincent.track.ins.KalmanFilter;
 
 import java.util.LinkedList;
@@ -17,8 +18,6 @@ public class LinearAccelerationListener implements SensorEventListener {
 	private static final double UPPER_THRESHOLD = 1d;
 	private static final double LOWER_THRESHOLD = 0.05d;
 	private static final double FACTOR = 2;
-	private static final String PITCH_FACTOR = "pitch_factor";
-	private static final String ACCELERATION_OFFSET = "accleration_offset";
 	private SharedPreferences mParameters;
 	private long mLastUpdateTime = 0;
 	private double mLastFirstPass = 0;
@@ -46,8 +45,8 @@ public class LinearAccelerationListener implements SensorEventListener {
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		// TODO Auto-generated method stub
-		float factor = mParameters.getFloat(PITCH_FACTOR, 1);
-		double adjustedValue = (event.values[1] - mParameters.getFloat(ACCELERATION_OFFSET, 0)) * factor;
+		float factor = mParameters.getFloat(Track.PITCH_FACTOR, 1);
+		double adjustedValue = (event.values[1] - mParameters.getFloat(Track.ACCELERATION_OFFSET, 0)) * factor;
 		lastAcceleration = adjustedValue;
 		double value = 0;
 		// first update received

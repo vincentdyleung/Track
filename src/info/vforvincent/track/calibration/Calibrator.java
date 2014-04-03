@@ -58,7 +58,6 @@ public class Calibrator implements Callable<double[]> {
 	
 	@Override
 	public double[] call() throws Exception {
-		// TODO Auto-generated method stub
 		HandlerThread handlerThread = new HandlerThread("calibration");
 		handlerThread.start();
 		Handler calibrationHandler = new Handler(handlerThread.getLooper());
