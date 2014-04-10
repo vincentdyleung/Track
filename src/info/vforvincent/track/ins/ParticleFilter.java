@@ -1,18 +1,24 @@
 package info.vforvincent.track.ins;
 
+import info.vforvincent.track.app.MainActivity;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
 import Jama.Matrix;
+import android.util.Log;
 
 public class ParticleFilter {
 	
 	private List<Particle> particles;
+	private static int BOUND_X = 1008;
+	private static int BOUND_Y = 865;
 	private static int PARTICLE_COUNT = 500;
 	private int rows;
 	private int cols;
 	private static ParticleFilter instance;
+	private double variance;
 	
 	public static ParticleFilter getInstance() {
 		if (instance == null) {
@@ -26,20 +32,19 @@ public class ParticleFilter {
 
 	}
 	
-	public void initialize(Matrix state, Matrix landmark, Matrix covariance) {
-		particles.removeAll(particles);
-		double meanDistance = getDistance(state, landmark);
+	public void initialize() {
 		for (int i = 0; i < PARTICLE_COUNT; i++) {
-			Particle p = generateRandomParticle(state, covariance);
-			p.updateWeight(landmark, meanDistance, getVarianceFromCovariance(covariance));
+			Particle p = generateRandomParticle(BOUND_X, BOUND_Y);
 			particles.add(p);
 		}
-		rows = state.getRowDimension();
-		cols = state.getColumnDimension();
+		rows = 2;
+		cols = 1;
 	}
 	
-	public void start() {
-		resample();
+	public void updateWeight(Matrix landmark) {
+		for (Particle particle : particles) {
+			particle.updateWeight(landmark, variance);
+		}
 	}
 	
 	public Matrix getEstimatedState() {
@@ -51,11 +56,12 @@ public class ParticleFilter {
 		return estimate; 
 	}
 	
-	private void resample() {
+	public void resample() {
 		Random random = new Random();
 		int index = random.nextInt(PARTICLE_COUNT);
 		double beta = 0;
 		double maxWeight = getMaxWeight(particles);
+		Log.d(MainActivity.TAG, "Max weight: " + Double.toString(maxWeight));
 		List<Particle> resampledParticles = new LinkedList<Particle>();
 		for (int i = 0; i < PARTICLE_COUNT; i++) {
 			beta += random.nextFloat() * 2 * maxWeight;
@@ -65,11 +71,15 @@ public class ParticleFilter {
 				index = (index + 1) % PARTICLE_COUNT;
 				weight = particles.get(index).weight;
 			}
+			//Log.d(MainActivity.TAG, Double.toString(particles.get(index).weight));
 			resampledParticles.add(particles.get(index));
-			//Log.d("PF", "Selected: " + Arrays.deepToString(particles.get(index).state.getArray()));
 		}
 		particles.removeAll(particles);
 		particles.addAll(resampledParticles);
+	}
+	
+	public void setVariance(double variance) {
+		this.variance = variance;
 	}
 	
 	private double getMaxWeight(List<Particle> ps) {
@@ -82,15 +92,11 @@ public class ParticleFilter {
 		return mw;
 	}
 	
-	private Particle generateRandomParticle(Matrix state, Matrix covariance) {
-		Matrix randomState = new Matrix(state.getRowDimension(), state.getColumnDimension());
+	private Particle generateRandomParticle(int boundX, int boundY) {
 		Random random = new Random();
-		for (int i = 0; i < covariance.getRowDimension(); i++) {
-			double sd = Math.sqrt(covariance.get(i, i));
-			double mean = state.get(i, 0);
-			double gaussian = random.nextGaussian();
-			randomState.set(i, 0, gaussian * sd + mean);
-		}
+		int randomX = random.nextInt(boundX) + 1;
+		int randomY = random.nextInt(boundY) + 1;
+		Matrix randomState = new Matrix(new double[][] {{randomX}, {randomY}});
 		Particle p = new Particle(randomState, 0);
 		return p;
 	}
@@ -112,17 +118,18 @@ public class ParticleFilter {
 			state = s;
 		}
 		
-		public void updateWeight(Matrix landmark, double mean, double variance) {
+		public void updateWeight(Matrix landmark, double variance) {
 			double distance = getDistance(landmark, state);
-			//Log.d("PF", Double.toString(distance) + "," + Double.toString(mean) + "," + Double.toString(variance));
-			double exponent = -0.5 * Math.pow(distance - mean, 2) / variance;
+			//Log.d("PF", "Distance: " + Double.toString(distance));
+			//Log.d("PF", "Variance: " + Double.toString(variance));
+			double exponent = -0.5 * Math.pow(distance, 2) / variance;
 			double result = Math.exp(exponent) / Math.sqrt(2 * Math.PI * variance);
 			if (result < 0.000001 || Double.isNaN(result)) {
 				weight = 0;
 			} else {
 				weight = result;
 			}
-			//Log.d("PF", "Weight: " + Double.toString(weight));
+			
 		}
 		
 	}
@@ -133,10 +140,6 @@ public class ParticleFilter {
 			sum += Math.pow(v1.get(i, 0) - v2.get(i, 0), 2);
 		}
 		return Math.sqrt(sum);
-	}
-	
-	private double getVarianceFromCovariance(Matrix covariance) {
-		return covariance.get(0, 0);
 	}
 
 }

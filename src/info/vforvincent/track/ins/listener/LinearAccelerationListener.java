@@ -88,7 +88,7 @@ public class LinearAccelerationListener implements SensorEventListener {
 			}
 		}
 		Matrix measurement = new Matrix(new double[][]{{ filterInput*=FACTOR }});
-		mKalmanFilter.update(measurement, interval, value, varianceResult, adjustedValue);
+		mKalmanFilter.update(measurement, interval);
 	}
 	
 	public double getLastAcceleration() {

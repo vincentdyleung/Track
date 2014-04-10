@@ -197,6 +197,20 @@ public class MainActivity extends FragmentActivity
 	@Override
 	public void onTrackStateUpdate(Matrix state, int rssi) {
 		// TODO Auto-generated method stub
-		Log.d(TAG, Arrays.deepToString(state.getArray()));
+		String line = String.format(Locale.US, "%f,%f", state.get(0, 0), state.get(1, 0));
+		//FileUtil.getInstance().writeLine(line);
+		Log.d(TAG, "Estimate: " + Arrays.deepToString(state.getArray()));
+	}
+
+	@Override
+	public void onCalibrationStart() {
+		// TODO Auto-generated method stub
+		mText.setText("Calibrating...\n");
+	}
+
+	@Override
+	public void onCalibrationFinish() {
+		// TODO Auto-generated method stub
+		mText.append("Calibration done\n");
 	}
 }

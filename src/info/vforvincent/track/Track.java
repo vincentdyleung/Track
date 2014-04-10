@@ -1,13 +1,13 @@
 package info.vforvincent.track;
 
-import info.vforvincent.track.app.MainActivity;
+import info.vforvincent.track.app.FileUtil;
 import info.vforvincent.track.calibration.Calibrator;
 import info.vforvincent.track.ins.KalmanFilter;
 import info.vforvincent.track.ins.ParticleFilter;
 import info.vforvincent.track.ins.listener.LinearAccelerationListener;
 import info.vforvincent.track.listener.OnTrackStateUpdateListener;
 
-import java.util.Arrays;
+import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -23,7 +23,8 @@ import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.net.wifi.WifiManager;
-import android.util.Log;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.widget.Toast;
 
 public class Track {
@@ -53,6 +54,10 @@ public class Track {
 	private static final int[] SENSORS = {Sensor.TYPE_LINEAR_ACCELERATION, Sensor.TYPE_ROTATION_VECTOR};
 	private final Calibrator calibrator;
 	private WifiManager wifiManager;
+	private HandlerThread handlerThread;
+	private Matrix lastEstimatedState;
+	public static final int PIXEL_OFFSET_X = 4749;
+	public static final int PIXEL_OFFSET_Y = 788;
 	
 	public Track(String siteName, String dataFilePath, Activity activity, Context context) {
 		this.siteName = siteName;
@@ -69,6 +74,7 @@ public class Track {
 
 	public void start() {
 		if (parameters.getBoolean(IS_CALIBRATED, false) == false) {
+			listener.onCalibrationStart();
 			FutureTask<double[]> calibrationTask = new FutureTask<double[]>(calibrator);
 			Executor executor = Executors.newSingleThreadExecutor();
 			executor.execute(calibrationTask);
@@ -81,6 +87,7 @@ public class Track {
 				putFloat(PITCH_FACTOR, (float) results[3]).
 				putBoolean(IS_CALIBRATED, true)
 				.commit();
+				listener.onCalibrationFinish();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -94,6 +101,7 @@ public class Track {
 				new Matrix(new double[][] {{0d}, {0d}, {0d}}), 
 				new Matrix(new double[][] {{0d, 0d, 1d}}));
 		particleFilter = ParticleFilter.getInstance();
+		particleFilter.initialize();
 		locationUtil.setOnGetLocationResultListener(new OnGetLocationResultListener() {
 
 			@Override
@@ -101,13 +109,18 @@ public class Track {
 					Integer[] arg2, String arg3) {
 				if (positions != null && positions.length > 0) {
 					scale = ExtraLocationUtil.getBuildingScale(areaId);
+					PointF adjustedPosition = new PointF();
+					adjustedPosition.x = positions[0].x - PIXEL_OFFSET_X;
+					adjustedPosition.y = positions[0].y - PIXEL_OFFSET_Y;
 					lastPosition = currentPosition;
-					currentPosition = positions[0];
+					currentPosition = adjustedPosition;
 					if (isFirstFix == true) {
+						lastTimestamp = System.currentTimeMillis();
 						lastPosition = positions[0];
 						Matrix state = new Matrix(new double[][] {{0d}, {0d}, {0d}});
 						startKalmanFilter(state);
 						isFirstFix = false;
+						lastEstimatedState = new Matrix(new double[][] {{currentPosition.x}, {currentPosition.y}});
 						return;
 					}
 					runParticleFilter();
@@ -122,27 +135,51 @@ public class Track {
 		
 	}
 	
+	public void clearCalibration() {
+		parameters.edit().putBoolean(IS_CALIBRATED, false).commit();
+	}
+	
 	private void runParticleFilter() {
 		Matrix kalmanFilterState = kalmanFilter.getState();
 		Matrix kalmanFilterCovariance = kalmanFilter.getCovariance();
-		double distance = getDistance(currentPosition, lastPosition);
 		double time = ((double) System.currentTimeMillis() - lastTimestamp) / 1000;
-		Matrix landmark = new Matrix(new double[][] {{distance}, {distance / time}, {linearAccelerationListener.getLastAcceleration()}});
-		Log.d(MainActivity.TAG, "Landmark: " + Arrays.deepToString(landmark.getArray()));
-		Log.d(MainActivity.TAG, "Kalman: " + Arrays.deepToString(kalmanFilterState.getArray()));
-		Log.d(MainActivity.TAG, "Covariance: " + Arrays.deepToString(kalmanFilterCovariance.getArray()));
-		particleFilter.initialize(kalmanFilterState, landmark, kalmanFilterCovariance);
-		particleFilter.start();
+		Matrix landmark = getLandmark(lastPosition, currentPosition, kalmanFilterState.get(0, 0));
+		particleFilter.updateWeight(landmark);
+		particleFilter.setVariance(kalmanFilterCovariance.get(0, 0));
+		particleFilter.resample();
 		estimatedState = particleFilter.getEstimatedState();
-		Matrix newState = new Matrix(new double[][] {{0d}, {estimatedState.getArray()[1][0]}, {estimatedState.getArray()[2][0]}});
+		Matrix newState = new Matrix(new double[][] {{0d}, {getEstimatedDistance() / time}, {linearAccelerationListener.getLastAcceleration()}});
 		linearAccelerationListener.getKalmanFilter().setState(newState);
 		lastTimestamp = System.currentTimeMillis();
+		lastEstimatedState.set(0, 0, estimatedState.get(0, 0));
+		lastEstimatedState.set(1, 0, estimatedState.get(1, 0));
 		listener.onTrackStateUpdate(estimatedState, wifiManager.getConnectionInfo().getRssi());
+	}
+	
+	private Matrix getLandmark(PointF lastPosition, PointF currentPosition, double kalmanDistance) {
+		double wifiDistance = getDistance(currentPosition, lastPosition);
+		double ratio = kalmanDistance / wifiDistance;
+		double deltaX = ratio * (currentPosition.x - lastPosition.x);
+		double deltaY = ratio * (currentPosition.y - lastPosition.y);
+		double landmarkX = lastPosition.x + deltaX;
+		double landmarkY = lastPosition.y + deltaY;
+		String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f", wifiDistance, kalmanDistance, ratio, deltaX, deltaY, landmarkX, landmarkY);
+		FileUtil.getInstance().writeLine(line);
+		return new Matrix(new double[][]{{landmarkX}, {landmarkY}});
+	}
+	
+	private double getEstimatedDistance() {
+		double currentX = estimatedState.get(0, 0);
+		double currentY = estimatedState.get(1, 0);
+		double lastX = lastEstimatedState.get(0, 0);
+		double lastY = lastEstimatedState.get(1, 0);
+		return Math.sqrt(Math.pow(currentX - lastX, 2) + Math.pow(currentY - lastY, 2)) / scale;
 	}
 	
 	public void stop() {
 		locationUtil.stopLocation();
 		sensorManager.unregisterListener(linearAccelerationListener, accelerometer);
+		handlerThread.quit();
 	}
 	
 	public void setOnTrackStateUpdateListener(OnTrackStateUpdateListener listener) {
@@ -152,7 +189,10 @@ public class Track {
 	private void startKalmanFilter(Matrix initialState) {
 		kalmanFilter.setState(initialState);
 		linearAccelerationListener = new LinearAccelerationListener(kalmanFilter, parameters);
-		sensorManager.registerListener(linearAccelerationListener, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+		handlerThread = new HandlerThread("KalmanFilter");
+		handlerThread.start();
+		Handler handler = new Handler(handlerThread.getLooper());
+		sensorManager.registerListener(linearAccelerationListener, accelerometer, SensorManager.SENSOR_DELAY_FASTEST, handler);
 	}
 	
 	private double getDistance(PointF p1, PointF p2) {

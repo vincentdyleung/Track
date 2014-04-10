@@ -1,13 +1,9 @@
 package info.vforvincent.track.ins;
 
-import java.io.FileWriter;
-import java.io.IOException;
-
 import Jama.Matrix;
 
 public class KalmanFilter {
 
-	private FileWriter writer;
 	private double q;
 	private Matrix x;
 	private Matrix H;
@@ -32,7 +28,7 @@ public class KalmanFilter {
 		
 	}
 	
-	public void update(Matrix measurement_, double interval_, double reading, double movingVariance, double raw) {
+	public void update(Matrix measurement_, double interval_) {
 		Matrix y = measurement_.minus(H.times(x));
 		Matrix S = H.times(P).times(H.transpose()).plus(R);
 		double valS = S.get(0, 0);
@@ -52,8 +48,9 @@ public class KalmanFilter {
 		Matrix Q = new Matrix(qArray);
 		x = F.times(x).copy();
 		P = F.times(P).times(F.transpose()).plus(Q).copy();
-		//String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f,%f,%f", P.get(0, 0), P.get(0, 1), P.get(0, 2), P.get(1, 0), P.get(1, 1), P.get(1, 2), P.get(2, 0), P.get(2, 1), P.get(2, 2));
-		//FileUtil.getInstance().writeLine(line);
+//		String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f,%f,%f", P.get(0, 0), P.get(0, 1), P.get(0, 2), P.get(1, 0), P.get(1, 1), P.get(1, 2), P.get(2, 0), P.get(2, 1), P.get(2, 2));
+//		Log.d("Kalman", line);
+//		FileUtil.getInstance().writeLine(line);
 	}
 	
 	public Matrix getState() {
@@ -61,7 +58,9 @@ public class KalmanFilter {
 	}
 	
 	public void setState(Matrix state) {
-		x = state;
+		x.set(0, 0, state.get(0, 0));
+		x.set(1, 0, state.get(1, 0));
+		x.set(2, 0, state.get(2, 0));
 	}
 	
 	public void setVariance(double variance) {
@@ -72,15 +71,6 @@ public class KalmanFilter {
 	
 	public Matrix getCovariance() {
 		return P;
-	}
-	
-	public void closeWriter() {
-		try {
-			writer.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 	
 }
