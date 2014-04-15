@@ -1,13 +1,16 @@
 package info.vforvincent.track;
 
-import info.vforvincent.track.app.FileUtil;
+import info.vforvincent.track.app.MainActivity;
 import info.vforvincent.track.calibration.Calibrator;
 import info.vforvincent.track.ins.KalmanFilter;
+import info.vforvincent.track.ins.MapConstraint;
 import info.vforvincent.track.ins.ParticleFilter;
+import info.vforvincent.track.ins.ParticleFilter.ProbabilityModel;
+import info.vforvincent.track.ins.WiFiINSProbabilityModel;
 import info.vforvincent.track.ins.listener.LinearAccelerationListener;
 import info.vforvincent.track.listener.OnTrackStateUpdateListener;
 
-import java.util.Locale;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -25,6 +28,7 @@ import android.hardware.SensorManager;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.util.Log;
 import android.widget.Toast;
 
 public class Track {
@@ -56,6 +60,7 @@ public class Track {
 	private WifiManager wifiManager;
 	private HandlerThread handlerThread;
 	private Matrix lastEstimatedState;
+	private MapConstraint mapConstraint;
 	public static final int PIXEL_OFFSET_X = 4749;
 	public static final int PIXEL_OFFSET_Y = 788;
 	
@@ -70,6 +75,7 @@ public class Track {
 		calibrator = new Calibrator(SENSORS, context);
 		wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
 		locationUtil = new LocationUtil(this.context, this.siteName, this.dataFilePath);
+		mapConstraint = MapConstraint.getInstance();
 	}
 
 	public void start() {
@@ -102,6 +108,7 @@ public class Track {
 				new Matrix(new double[][] {{0d, 0d, 1d}}));
 		particleFilter = ParticleFilter.getInstance();
 		particleFilter.initialize();
+		listener.onParticleFilterInitialize(particleFilter.getParticles());
 		locationUtil.setOnGetLocationResultListener(new OnGetLocationResultListener() {
 
 			@Override
@@ -141,31 +148,20 @@ public class Track {
 	
 	private void runParticleFilter() {
 		Matrix kalmanFilterState = kalmanFilter.getState();
-		Matrix kalmanFilterCovariance = kalmanFilter.getCovariance();
+		ProbabilityModel model = new WiFiINSProbabilityModel(lastPosition, currentPosition, kalmanFilterState.get(0, 0) * scale, mapConstraint, lastEstimatedState);
 		double time = ((double) System.currentTimeMillis() - lastTimestamp) / 1000;
-		Matrix landmark = getLandmark(lastPosition, currentPosition, kalmanFilterState.get(0, 0));
-		particleFilter.updateWeight(landmark);
-		particleFilter.setVariance(kalmanFilterCovariance.get(0, 0));
+		particleFilter.updateWeight(model);
 		particleFilter.resample();
 		estimatedState = particleFilter.getEstimatedState();
 		Matrix newState = new Matrix(new double[][] {{0d}, {getEstimatedDistance() / time}, {linearAccelerationListener.getLastAcceleration()}});
 		linearAccelerationListener.getKalmanFilter().setState(newState);
+		linearAccelerationListener.getKalmanFilter().resetCovariance();
 		lastTimestamp = System.currentTimeMillis();
 		lastEstimatedState.set(0, 0, estimatedState.get(0, 0));
 		lastEstimatedState.set(1, 0, estimatedState.get(1, 0));
-		listener.onTrackStateUpdate(estimatedState, wifiManager.getConnectionInfo().getRssi());
-	}
-	
-	private Matrix getLandmark(PointF lastPosition, PointF currentPosition, double kalmanDistance) {
-		double wifiDistance = getDistance(currentPosition, lastPosition);
-		double ratio = kalmanDistance / wifiDistance;
-		double deltaX = ratio * (currentPosition.x - lastPosition.x);
-		double deltaY = ratio * (currentPosition.y - lastPosition.y);
-		double landmarkX = lastPosition.x + deltaX;
-		double landmarkY = lastPosition.y + deltaY;
-		String line = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f", wifiDistance, kalmanDistance, ratio, deltaX, deltaY, landmarkX, landmarkY);
-		FileUtil.getInstance().writeLine(line);
-		return new Matrix(new double[][]{{landmarkX}, {landmarkY}});
+		Matrix current = new Matrix(new double[][]{{currentPosition.x}, {currentPosition.y}});
+		Log.d(MainActivity.TAG, "current: " + Arrays.deepToString(current.getArray()));
+		listener.onTrackStateUpdate(estimatedState, particleFilter.getParticles(), wifiManager.getConnectionInfo().getRssi());
 	}
 	
 	private double getEstimatedDistance() {
@@ -193,14 +189,6 @@ public class Track {
 		handlerThread.start();
 		Handler handler = new Handler(handlerThread.getLooper());
 		sensorManager.registerListener(linearAccelerationListener, accelerometer, SensorManager.SENSOR_DELAY_FASTEST, handler);
-	}
-	
-	private double getDistance(PointF p1, PointF p2) {
-		float x1 = p1.x;
-		float y1 = p1.y;
-		float x2 = p2.x;
-		float y2 = p2.y;
-		return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) / scale;
 	}
 
 }

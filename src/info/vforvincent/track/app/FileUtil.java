@@ -40,7 +40,7 @@ public class FileUtil {
 	
 	public void open() {
 		if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-			String directoryPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Track/";
+			String directoryPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Track/debug";
 			File directory = new File(directoryPath);
 			if (!directory.exists()) {
 				directory.mkdir();

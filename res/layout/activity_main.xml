@@ -7,6 +7,28 @@
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".MainActivity" >
+        	<info.vforvincent.track.app.ui.ParticlesView
+                android:id="@+id/particles_view"
+                android:layout_width="wrap_content"
+                android:layout_height="100dp"/>
 
+
+
+    <Button
+        android:id="@+id/start_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/particles_view"
+        android:layout_alignParentBottom="true"
+        android:text="@string/start_label" />
+
+    <Button
+        android:id="@+id/stop_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginLeft="11dp"
+        android:layout_toRightOf="@+id/start_button"
+        android:text="@string/stop_label" />
     
 </RelativeLayout>

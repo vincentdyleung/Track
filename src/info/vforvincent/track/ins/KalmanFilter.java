@@ -11,6 +11,7 @@ public class KalmanFilter {
 	private Matrix P;
 	private Matrix R;
 	private final Matrix I;
+	private Matrix initialP;
 	
 	public KalmanFilter(double variance_, Matrix state_, Matrix extraction_) {
 		q = variance_;
@@ -23,6 +24,7 @@ public class KalmanFilter {
 		
 		double[][] stateUncertaintyArray_ = {{0d, 0d, 0d}, {0d, 0d, 0d}, {0d, 0d, q}};
 		P = new Matrix(stateUncertaintyArray_);
+		initialP = new Matrix(stateUncertaintyArray_);
 		
 		R = new Matrix(new double[][] {{q}});
 		
@@ -71,6 +73,10 @@ public class KalmanFilter {
 	
 	public Matrix getCovariance() {
 		return P;
+	}
+	
+	public void resetCovariance() {
+		P = initialP.copy();
 	}
 	
 }

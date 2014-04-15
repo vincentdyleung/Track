@@ -3,6 +3,7 @@ package info.vforvincent.track.app;
 import info.vforvincent.track.R;
 import info.vforvincent.track.Track;
 import info.vforvincent.track.app.ui.DistanceDialogFragment;
+import info.vforvincent.track.ins.ParticleFilter.Particle;
 import info.vforvincent.track.listener.OnTrackStateUpdateListener;
 
 import java.io.File;
@@ -11,6 +12,7 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -195,9 +197,9 @@ public class DebugActivity extends FragmentActivity
 	}
 
 	@Override
-	public void onTrackStateUpdate(Matrix state, int rssi) {
+	public void onTrackStateUpdate(Matrix state, List<Particle> particles, int rssi) {
 		// TODO Auto-generated method stub
-		String line = String.format(Locale.US, "%f,%f", state.get(0, 0), state.get(1, 0));
+		//String line = String.format(Locale.US, "%f,%f", state.get(0, 0), state.get(1, 0));
 		//FileUtil.getInstance().writeLine(line);
 		Log.d(TAG, "Estimate: " + Arrays.deepToString(state.getArray()));
 	}
@@ -212,6 +214,12 @@ public class DebugActivity extends FragmentActivity
 	public void onCalibrationFinish() {
 		// TODO Auto-generated method stub
 		mText.append("Calibration done\n");
+	}
+
+	@Override
+	public void onParticleFilterInitialize(List<Particle> particles) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }
